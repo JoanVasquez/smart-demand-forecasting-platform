@@ -1,0 +1,106 @@
+services:
+  sale-db:
+    image: postgres:16
+    container_name: sale-db
+    restart: always
+    environment:
+      POSTGRES_USER: sale_user
+      POSTGRES_PASSWORD: sale_password
+      POSTGRES_DB: sale_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - sale-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smart-net
+
+  sale-api:
+    build:
+      context: .
+      dockerfile: services/sale-service/Dockerfile
+    container_name: sale-api
+    restart: always
+    environment:
+      KAFKA_BROKER: kafka:9092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      SPECIFIC_AVRO_READER: true
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_SHOW_SQL: true
+      SALES_CREATED_TOPIC: sales_created
+      SPRING_DATASOURCE_URL: jdbc:postgresql://sale-db:5432/sale_db
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_USERNAME: sale_user
+      SPRING_DATASOURCE_PASSWORD: sale_password
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./shared:/app/shared
+    depends_on:
+      - sale-db
+      - kafka
+      - schema-registry
+    networks:
+      - smart-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - smart-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    depends_on:
+      - zookeeper
+    networks:
+      - smart-net
+
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    container_name: schema-registry
+    restart: always
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_GROUP_ID: schema-registry-group
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+    networks:
+      - smart-net
+
+volumes:
+  sale-db-data:
+
+networks:
+  smart-net:
+    driver: bridge

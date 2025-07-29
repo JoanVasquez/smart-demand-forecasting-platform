@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "SaleCreated",
+  "namespace": "com.smartforecast.schemas",
+  "fields": [
+    { "name": "sale_id", "type": "string" },
+    { "name": "product_id", "type": "string" },
+    { "name": "quantity", "type": "int" },
+    { "name": "sale_date", "type": { "type": "string", "logicalType": "date" } }
+  ]
+}
