@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = ""
     KAFKA_GROUP_ID: str = ""
     SCHEMA_REGISTRY_URL: str = ""
+    REDIS_HOST: str = ""
+    # RESULT_CELERY_BACKEND: str = ""
+
 
     model_config = {
 	"env_file": ENV_FILE,

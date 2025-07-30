@@ -13,3 +13,6 @@ confluent-kafka[avro]
 fastavro
 prophet
 pandas
+celery
+flower
+redis

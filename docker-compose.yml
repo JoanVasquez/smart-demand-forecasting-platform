@@ -70,7 +70,7 @@ services:
   ml-forecast-api:
     build: ./services/ml-forecast
     container_name: ml-forecast-api
-    entrypoint: ["/app/entrypoint.sh"]
+    # entrypoint: ["/app/entrypoint.sh"]
     restart: always
     environment:
       DB_NAME: ${ML_FORECAST_DB_NAME}
@@ -80,6 +80,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BROKER}
       KAFKA_GROUP_ID: ${ML_FORECAST_KAFKA_GROUP_ID}
       SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      # RESULT_CELERY_BACKEND: ${RESULT_CELERY_BACKEND}
     ports:
       - "8080:8080"
     volumes:
@@ -152,6 +154,86 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - smart-net
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - smart-net
+
+  worker:
+    build: ./services/ml-forecast
+    command: celery -A app.config.celery_worker.celery_app worker --loglevel=info
+    environment:
+      DB_NAME: ${ML_FORECAST_DB_NAME}
+      DB_USER: ${ML_FORECAST_DB_USER}
+      DB_PASSWORD: ${ML_FORECAST_DB_PASSWORD}
+      DB_HOST: ${ML_FORECAST_DB_HOST}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BROKER}
+      KAFKA_GROUP_ID: ${ML_FORECAST_KAFKA_GROUP_ID}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      REDIS_HOST: ${REDIS_HOST}
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    networks:
+      - smart-net
+
+  beat:
+    build: ./services/ml-forecast
+    command: celery -A app.config.celery_worker.celery_app beat --loglevel=info
+    environment:
+      DB_NAME: ${ML_FORECAST_DB_NAME}
+      DB_USER: ${ML_FORECAST_DB_USER}
+      DB_PASSWORD: ${ML_FORECAST_DB_PASSWORD}
+      DB_HOST: ${ML_FORECAST_DB_HOST}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BROKER}
+      KAFKA_GROUP_ID: ${ML_FORECAST_KAFKA_GROUP_ID}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      REDIS_HOST: ${REDIS_HOST}
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    networks:
+      - smart-net
+
+  flower:
+    build: ./services/ml-forecast
+    command: celery -A app.config.celery_worker.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      DB_NAME: ${ML_FORECAST_DB_NAME}
+      DB_USER: ${ML_FORECAST_DB_USER}
+      DB_PASSWORD: ${ML_FORECAST_DB_PASSWORD}
+      DB_HOST: ${ML_FORECAST_DB_HOST}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BROKER}
+      KAFKA_GROUP_ID: ${ML_FORECAST_KAFKA_GROUP_ID}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      REDIS_HOST: ${REDIS_HOST}
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     networks:
       - smart-net
 
