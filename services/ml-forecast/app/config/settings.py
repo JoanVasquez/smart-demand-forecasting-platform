@@ -5,22 +5,21 @@ ENV_FILE = os.getenv("ENV_FILE", ".env")
 
 
 class Settings(BaseSettings):
-    DB_NAME: str = ""
-    DB_USER: str = ""
-    DB_PASSWORD: str = ""
-    DB_HOST: str = ""
-    DB_PORT: int = 5433
+    ML_FORECAST_DB_NAME: str = ""
+    ML_FORECAST_DB_USER: str = ""
+    ML_FORECAST_DB_PASSWORD: str = ""
+    ML_FORECAST_DB_HOST: str = ""
+    ML_FORECAST_DB_PORT: int = 5432
 
-    KAFKA_BOOTSTRAP_SERVERS: str = ""
-    KAFKA_GROUP_ID: str = ""
+    KAFKA_BROKER: str = ""
+    ML_FORECAST_KAFKA_GROUP_ID: str = ""
     SCHEMA_REGISTRY_URL: str = ""
-    REDIS_HOST: str = ""
-    # RESULT_CELERY_BACKEND: str = ""
 
+    REDIS_HOST: str = ""
 
     model_config = {
-	"env_file": ENV_FILE,
-	"extra": "allow"
+	    "env_file": ENV_FILE,
+	    "extra": "allow"
     }
 
 settings = Settings()

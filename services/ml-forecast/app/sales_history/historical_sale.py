@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from app.config.db import Base
 
 
 class HistoricalSale(Base):

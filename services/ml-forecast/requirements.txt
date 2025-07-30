@@ -16,3 +16,4 @@ pandas
 celery
 flower
 redis
+tenacity
