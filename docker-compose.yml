@@ -1,0 +1,164 @@
+services:
+  sale-db:
+    image: postgres:16
+    container_name: sale-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      POSTGRES_DB: sale_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - sale-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smart-net
+
+  sale-api:
+    build:
+      context: .
+      dockerfile: services/sale-service/Dockerfile
+    container_name: sale-api
+    restart: always
+    environment:
+      KAFKA_BROKER: ${KAFKA_BROKER}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+      SPECIFIC_AVRO_READER: true
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      SPRING_JPA_DATABASE_PLATFORM: ${SPRING_JPA_DATABASE_PLATFORM}
+      SPRING_JPA_SHOW_SQL: true
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared:/app/shared
+    depends_on:
+      - sale-db
+      - kafka
+      - schema-registry
+    networks:
+      - smart-net
+
+  ml-forecast-db:
+    image: postgres:16
+    container_name: forecast-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${ML_FORECAST_DB_USER}
+      POSTGRES_PASSWORD: ${ML_FORECAST_DB_PASSWORD}
+      POSTGRES_DB: ml_forecast_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - forecast-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smart-net
+
+  ml-forecast-api:
+    build: ./services/ml-forecast
+    container_name: ml-forecast-api
+    entrypoint: ["/app/entrypoint.sh"]
+    restart: always
+    environment:
+      DB_NAME: ${ML_FORECAST_DB_NAME}
+      DB_USER: ${ML_FORECAST_DB_USER}
+      DB_PASSWORD: ${ML_FORECAST_DB_PASSWORD}
+      DB_HOST: ${ML_FORECAST_DB_HOST}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BROKER}
+      KAFKA_GROUP_ID: ${ML_FORECAST_KAFKA_GROUP_ID}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./shared:/app/shared
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      ml-forecast-db:
+        condition: service_healthy
+    networks:
+      - smart-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT}
+      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME}
+    ports:
+      - "2181:2181"
+    networks:
+      - smart-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT}
+      KAFKA_LISTENERS: ${KAFKA_LISTENERS}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
+      KAFKA_INTER_BROKER_LISTENER_NAME: ${KAFKA_INTER_BROKER_LISTENER_NAME}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CREATE_TOPICS: "sales_created:1:1"
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - smart-net
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    container_name: schema-registry
+    restart: always
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: ${SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS}
+      SCHEMA_REGISTRY_HOST_NAME: ${SCHEMA_REGISTRY_HOST_NAME}
+      SCHEMA_REGISTRY_LISTENERS: ${SCHEMA_REGISTRY_LISTENERS}
+      SCHEMA_REGISTRY_GROUP_ID: ${SCHEMA_REGISTRY_GROUP_ID}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - smart-net
+
+volumes:
+  sale-db-data:
+  forecast-db-data:
+
+networks:
+  smart-net:
+    driver: bridge

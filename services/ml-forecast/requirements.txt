@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic_settings
+pydantic
+sqlalchemy
+asyncpg
+psycopg2-binary
+aiokafka
+fastavro
+httpx
+confluent-kafka[avro]
+fastavro
+prophet
+pandas

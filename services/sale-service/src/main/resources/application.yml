@@ -1,0 +1,29 @@
+server:
+  port: 8000
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKER}
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        specific.avro.reader: ${SPECIFIC_AVRO_READER:true}
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM}
+    show-sql: ${SPRING_JPA_SHOW_SQL}
+
+app:
+  topic:
+    sales-created: ${SALES_CREATED_TOPIC:sales_created}
