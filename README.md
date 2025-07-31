@@ -52,3 +52,35 @@ Configure `.env` file with your database credentials and Kafka settings.
 
 ### Local Development
 Each service can be run independently for development. See individual service directories for specific setup instructions.
+
+## API Examples
+
+### Create Sales Data
+```bash
+POST http://localhost:8000/api/v1/sale
+Content-Type: application/json
+
+{
+  "productId": "test123",
+  "quantity": 9,
+  "saleDate": "2025-07-05T11:00:00"
+}
+```
+
+### Get Forecasts
+```bash
+GET http://localhost:8080/api/v1/forecast
+```
+
+Response:
+```json
+[
+  {
+    "ds": "2025-07-02T14:20:00",
+    "trend": 3.920598,
+    "yhat_lower": 7.999879365992028,
+    "yhat_upper": 7.999879367271052,
+    "yhat": 7.999879366596635
+  }
+]
+```
