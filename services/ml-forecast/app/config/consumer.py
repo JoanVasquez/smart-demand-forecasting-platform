@@ -4,12 +4,20 @@ import time
 from io import BytesIO
 from aiokafka import AIOKafkaConsumer
 from fastavro import parse_schema, schemaless_reader
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.config.schema_registry import SchemaRegistryClient
 from app.config.settings import settings
 from app.exceptions.types import (
     AvroDecodeError,
     KafkaConnectionError,
+    DatabaseError,
 )
+from app.sales_history.repository import HistoricalSaleRepository
+from app.sales_history.service import HistoricalSaleService
+from app.create_sale_schema import HistoricalSaleCreate
+from app.config.db import async_session
+
 
 class KafkaAvroConsumer:
     def __init__(self):
@@ -42,12 +50,20 @@ class KafkaAvroConsumer:
             async for msg in self.consumer:
                 try:
                     value = await self.decode_avro(msg.value, topic)
-                except AvroDecodeError as exc:
+                except AvroDecodeError:
                     await self.consumer.commit()
                     continue
 
+                try:
+                    async with async_session() as session:
+                        repo = HistoricalSaleRepository(session)
+                        service = HistoricalSaleService(repo)
 
-                # TODO: save to DB (levanta tu DatabaseError si algo falla)
+                        sale_data = HistoricalSaleCreate(**value)
+                        await service.create_historical_sale(sale_data)
+
+                except (SQLAlchemyError, DatabaseError) as exc:
+                    raise DatabaseError("Error inserting historical sale into database") from exc
 
                 await self.consumer.commit()
                 messages_processed += 1
@@ -92,3 +108,4 @@ class KafkaAvroConsumer:
 
 
 kafka_avro_consumer = KafkaAvroConsumer()
+

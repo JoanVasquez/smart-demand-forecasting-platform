@@ -14,6 +14,7 @@ load_dotenv()
 
 @retry(wait=wait_fixed(3), stop=stop_after_delay(30))
 async def init_service():
+    from app.sales_history import historical_sale
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
