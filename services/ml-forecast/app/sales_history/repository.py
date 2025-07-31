@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.sales_history.historical_sale import HistoricalSale
@@ -14,3 +15,9 @@ class HistoricalSaleRepository:
         await self.db.commit()
         await self.db.refresh(new_historical_sale)
         return new_historical_sale
+
+
+    async def findAll(self) -> List[HistoricalSale]:
+        result = await self.db.execute(select(HistoricalSale))
+        return result.scalars().all()
+

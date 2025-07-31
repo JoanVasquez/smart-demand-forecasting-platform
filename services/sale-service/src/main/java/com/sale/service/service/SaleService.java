@@ -9,7 +9,6 @@ import com.smartforecast.schemas.SaleCreated;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,8 +20,7 @@ public class SaleService {
     private final SaleProducer saleProducer;
 
     public Sale createSale(SaleDTO saleDTO) {
-        LocalDate localDate = LocalDate.now();
-        Sale newSale = Sale.builder().productId(saleDTO.getProductId()).quantity(saleDTO.getQuantity()).saleDate(localDate).build();
+        Sale newSale = Sale.builder().productId(saleDTO.getProductId()).quantity(saleDTO.getQuantity()).saleDate(saleDTO.getSaleDate()).build();
         SaleCreated saleCreated = new SaleCreated();
         Sale sale = saleRepository.save(newSale);
         saleCreated.setSaleId(sale.getId().toString());

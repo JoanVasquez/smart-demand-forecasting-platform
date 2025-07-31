@@ -17,7 +17,7 @@ async_session = async_sessionmaker(
 
 Base = declarative_base()
 
-@asynccontextmanager
+# @asynccontextmanager
 async def get_db():
     async with async_session() as session:
         yield session
